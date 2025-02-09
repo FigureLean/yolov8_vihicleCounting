@@ -1,0 +1,5 @@
+train: E:\pythonDemo\yolov8.3\dataset\image\train
+val: E:\pythonDemo\yolov8.3\dataset\image\val
+
+nc: 4  # 类别数量
+names: ['recyclable waste', 'hazardous waste','kitchen waste','other waste']  # 类别名称
