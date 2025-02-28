@@ -9,10 +9,10 @@ from ultralytics import YOLO
 
 if __name__ == '__main__':
     # 加载一个模型
-    model = YOLO('yolov8n.yaml')  # 从YAML建立一个新模型
+    model = YOLO('yolov8n.pt')  # 加载预训练权重
     # 训练模型
     results = model.train(
-        data="E:\\pythonDemo\\yolov8.3\\datasets\\vehicle\\data.yaml",
+        data= r"E:\\PythonDemo\\yolov8_vihicleCounting\\mktk_dataset\\data.yaml",
         device='0',
         epochs=200,
         batch=8,

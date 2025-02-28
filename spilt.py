@@ -1,11 +1,16 @@
-# 数据集划分文件，因为依赖问题，此文件被弃用
 import os
 import random
 import shutil
 import time
 import yaml
+import logging
 
-from wepy import get_logger, init_logger, GLOBAL_ENCODING
+# 初始化日志
+log_dir = 'logs'
+if not os.path.exists(log_dir):
+    os.makedirs(log_dir)
+log_file = os.path.join(log_dir, 'split_data.log')
+logging.basicConfig(filename=log_file, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 class YOLOTrainDataSetGenerator:
     def __init__(self, origin_dataset_dir, train_dataset_dir, train_ratio=0.7, val_ratio=0.15, test_ratio=0.15,
@@ -21,27 +26,27 @@ class YOLOTrainDataSetGenerator:
         self.clear_train_dir = clear_train_dir
 
         assert self.train_ratio > 0.5, 'train_ratio must larger than 0.5'
-        assert self.val_ratio > 0.01, 'train_ratio must larger than 0.01'
+        assert self.val_ratio > 0.01, 'val_ratio must larger than 0.01'
         assert self.test_ratio > 0.01, 'test_ratio must larger than 0.01'
         total_ratio = round(self.train_ratio + self.val_ratio + self.test_ratio)
         assert total_ratio == 1.0, 'train_ratio + val_ratio + test_ratio must equal 1.0'
 
     def generate(self):
         time_start = time.time()
-        get_logger().info(f'start to split origin data set. \n'
-                          f'origin_dataset_dir:{self.origin_dataset_dir},\n'
-                          f'train_dataset_dir:{self.train_dataset_dir},\n'
-                          f'train_ratio:{self.train_ratio},val_ratio:{self.val_ratio}, test_ratio:{self.test_ratio}')
+        logging.info(f'start to split origin data set. \n'
+                     f'origin_dataset_dir:{self.origin_dataset_dir},\n'
+                     f'train_dataset_dir:{self.train_dataset_dir},\n'
+                     f'train_ratio:{self.train_ratio},val_ratio:{self.val_ratio}, test_ratio:{self.test_ratio}')
         # 原始数据集的图像目录，标签目录，和类别文件路径
         origin_image_dir = os.path.join(self.origin_dataset_dir, 'images')
         origin_label_dir = os.path.join(self.origin_dataset_dir, 'labels')
         origin_classes_file = os.path.join(self.origin_dataset_dir, 'classes.txt')
         if not os.path.exists(origin_classes_file):
-            get_logger().error(f'classes file is not found. classes_file:{origin_classes_file}')
+            logging.error(f'classes file is not found. classes_file:{origin_classes_file}')
             return
         else:
             origin_classes = {}
-            with open(origin_classes_file, mode='r', encoding=GLOBAL_ENCODING) as f:
+            with open(origin_classes_file, mode='r', encoding='utf-8') as f:
                 for cls_id, cls_name in enumerate(f.readlines()):
                     cls_name = cls_name.strip()
                     if cls_name != '':
@@ -103,14 +108,14 @@ class YOLOTrainDataSetGenerator:
                 dst_label_path = os.path.join(output_label_dir, src_img_name_no_ext + '.txt')
                 shutil.copy(src_label_path, dst_label_path)
             else:
-                get_logger().error(f'no label file found for image file. img_file:{src_image_path}')
+                logging.error(f'no label file found for image file. img_file:{src_image_path}')
         train_dir = os.path.normpath(train_dir)
         val_dir = os.path.normpath(val_dir)
         test_dir = os.path.normpath(test_dir)
-        get_logger().info(f'generate train, val, test data set. \n'
-                          f'train_count:{train_count}, train_dir:{train_dir}\n'
-                          f'val_count:{val_count}, val_dir:{val_dir}\n'
-                          f'test_count:{test_count}, test_dir:{test_dir}')
+        logging.info(f'generate train, val, test data set. \n'
+                     f'train_count:{train_count}, train_dir:{train_dir}\n'
+                     f'val_count:{val_count}, val_dir:{val_dir}\n'
+                     f'test_count:{test_count}, test_dir:{test_dir}')
         # 生成描述训练集的yaml文件
         data_dict = {
             'train': train_dir,
@@ -121,24 +126,17 @@ class YOLOTrainDataSetGenerator:
         }
 
         yaml_file_path = os.path.normpath(os.path.join(self.train_dataset_dir, 'data.yaml'))
-        with open(yaml_file_path, mode='w', encoding=GLOBAL_ENCODING) as f:
-            yaml.safe_dump(data_dict, f, default_flow_style=False, allow_unicode=True, encoding=GLOBAL_ENCODING)
-        get_logger().info(f'generate the `data.yaml`. data:{data_dict}, yaml_file_path:{yaml_file_path}')
-        get_logger().info('end to ')
-
+        with open(yaml_file_path, mode='w', encoding='utf-8') as f:
+            yaml.safe_dump(data_dict, f, default_flow_style=False, allow_unicode=True)
+        logging.info(f'generate the `data.yaml`. data:{data_dict}, yaml_file_path:{yaml_file_path}')
+        logging.info('end to ')
 
 if __name__ == '__main__':
-    init_logger('logs/split_data.log')
-    g_origin_dataset_dir = r"E:\pythonDemo\vehicle_datasets\dataset"
-    g_train_dataset_dir = r"E:\pythonDemo\yolov8.3\datasets\vehicle"
+    g_origin_dataset_dir = r'E:\\PythonDemo\\yolov8_vihicleCounting\\dataset'
+    g_train_dataset_dir = r'E:\\PythonDemo\\yolov8_vihicleCounting\\mktk_dataset'
     g_train_ratio = 0.7
     g_val_ratio = 0.15
     g_test_ratio = 0.15
     yolo_generator = YOLOTrainDataSetGenerator(g_origin_dataset_dir, g_train_dataset_dir, g_train_ratio, g_val_ratio,
                                                g_test_ratio, True)
     yolo_generator.generate()
-
-# import torch
-# print(torch.cuda.is_available())  # 应该输出True
-# print(torch.cuda.device_count())  # 输出你的GPU数量
-# print(torch.cuda.get_device_name(0))  # 输出第一个GPU的名称
