@@ -12,9 +12,9 @@ if __name__ == '__main__':
     model = YOLO('yolov8n.pt')  # 加载预训练权重
     # 训练模型
     results = model.train(
-        data= r"E:\\PythonDemo\\yolov8_vihicleCounting\\mktk_dataset\\data.yaml",
-        device='0',
-        epochs=200,
+        data= r"E:\PythonDemo\human_dataset\data.yaml",
+        device='0', #使用GPU训练
+        epochs=200, #训练轮数
         batch=8,
         verbose=False,
         imgsz=640)
