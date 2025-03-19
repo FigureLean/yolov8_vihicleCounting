@@ -8,7 +8,7 @@ def train_model():
         results = model.train(
             data=r"E:\PythonDemo\yolov8_vihicleCounting\mktk_dataset\data.yaml",
             device='0',  # 使用GPU训练
-            epochs=200,  # 训练轮数
+            epochs=500,  # 训练轮数
             batch=8,
             verbose=False,
             imgsz=640
