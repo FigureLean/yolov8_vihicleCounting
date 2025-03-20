@@ -31,6 +31,9 @@ setup.py
 ultralytics.egg-info
 dataset/
 mktk_dataset/
+uploads/
+results/
+
 # PyInstaller
 #  Usually these files are written by a python script from a template
 #  before PyInstaller builds the exe, so as to inject date/other info into it.
