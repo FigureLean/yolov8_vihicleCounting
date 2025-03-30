@@ -3,7 +3,8 @@ from ultralytics import YOLO
 from collections import defaultdict
 
 # model = YOLO("E:\\pythonDemo\\yolov8.3\\yolo11n.pt")
-model = YOLO("E:\\pythonDemo\\yolov8.3\\runs\\detect\\train10\\weights\\best.pt")
+# model = YOLO("E:\\pythonDemo\\yolov8.3\\runs\\detect\\train10\\weights\\best.pt")
+# model = YOLO("E:\\PythonDemo\\yolov8_vihicleCounting\\best.pt")
 
 cap = cv2.VideoCapture("E:\\pythonDemo\\yolov8.3\\vedios\\Traffic, Car, Highway. Free Stock Video.mp4")
 fps = cap.get(cv2.CAP_PROP_FPS)
