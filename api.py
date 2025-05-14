@@ -11,6 +11,7 @@ import json
 from collections import defaultdict
 from ultralytics import YOLO
 from pydantic import BaseModel
+import numpy as np
 
 # 创建文件夹
 UPLOAD_DIR = "uploads"
@@ -37,7 +38,7 @@ app.add_middleware(
 )
 
 # 配置静态文件访问
-results_dir = "E:/PythonDemo/yolov8_vihicleCounting/results"
+results_dir = "E:\\PythonDemo\\yolov8_vihicleCounting\\results"
 os.makedirs(results_dir, exist_ok=True)
 app.mount("/results", StaticFiles(directory=results_dir), name="results")
 
@@ -94,13 +95,77 @@ def process_image(filename):
     return result_path
 
 
+# def process_video(filename):
+#     """ 处理视频，并添加车辆计数、目标框和中心点 """
+#     cap = cv2.VideoCapture(filename)
+#     if not cap.isOpened():
+#         raise HTTPException(status_code=400, detail="无效的视频文件")
+
+#     result_path = os.path.join(RESULT_DIR, os.path.basename(filename))
+#     fourcc = cv2.VideoWriter_fourcc(*"avc1")
+#     fps = int(cap.get(cv2.CAP_PROP_FPS))
+#     frame_size = (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)))
+#     out = cv2.VideoWriter(result_path, fourcc, fps, frame_size)
+
+#     global track_history, vehicle_in, vehicle_out
+#     track_history.clear()  # 清空历史轨迹，避免前一个视频数据影响当前视频
+#     vehicle_in, vehicle_out = 0, 0  # 重新计数
+
+#     while True:
+#         ret, frame = cap.read()
+#         if not ret:
+#             break
+
+#         results = model.track(frame, conf=0.3, persist=True)  # 目标检测 + 目标跟踪
+#         if results[0].boxes.id is not None:
+#             track_ids = results[0].boxes.id.int().cpu().tolist()
+#         else:
+#             track_ids = []
+
+#         for track_id, box in zip(track_ids, results[0].boxes.data):
+#             x1, y1, x2, y2, conf, cls = map(int, box[:6])  # 获取目标边界框
+#             class_name = model.names[cls]  # 获取类别名称
+
+#             # 绘制目标框
+#             cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+#             cv2.putText(frame, f"#{track_id} {class_name} {conf:.2f}", (x1, y1 - 10),
+#                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+
+#             # 计算中心点
+#             cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
+#             cv2.circle(frame, (cx, cy), 4, (0, 0, 255), -1)  # 画出中心红点
+
+#             # 更新 track_history
+#             track_history[track_id].append((cx, cy))
+
+#             # 车辆进出计数
+#             if len(track_history[track_id]) > 1:
+#                 _, prev_y = track_history[track_id][-2]
+#                 if prev_y < line_y_red and cy >= line_y_red:
+#                     vehicle_out += 1
+#                 elif prev_y > line_y_red and cy <= line_y_red:
+#                     vehicle_in += 1
+
+#         # 绘制基准线
+#         cv2.line(frame, (30, line_y_red), (frame_size[0] - 30, line_y_red), (25, 33, 189), 2)
+#         cv2.putText(frame, f'in: {vehicle_in}', (595, line_y_red - 10),
+#                     cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
+#         cv2.putText(frame, f'out: {vehicle_out}', (573, line_y_red + 30),
+#                     cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
+
+#         out.write(frame)
+
+#     cap.release()
+#     out.release()
+#     return result_path
+
 def process_video(filename):
-    """ 处理视频，并添加车辆计数、目标框和中心点 """
+    """处理视频，并添加车辆计数、目标框和中心点"""
     cap = cv2.VideoCapture(filename)
     if not cap.isOpened():
-        raise HTTPException(status_code=400, detail="无效的视频文件")
+        raise Exception("无效的视频文件")
 
-    result_path = os.path.join(RESULT_DIR, os.path.basename(filename))
+    result_path = os.path.join("result_dir", os.path.basename(filename))
     fourcc = cv2.VideoWriter_fourcc(*"avc1")
     fps = int(cap.get(cv2.CAP_PROP_FPS))
     frame_size = (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)))
@@ -109,6 +174,19 @@ def process_video(filename):
     global track_history, vehicle_in, vehicle_out
     track_history.clear()  # 清空历史轨迹，避免前一个视频数据影响当前视频
     vehicle_in, vehicle_out = 0, 0  # 重新计数
+
+    # 初始化卡尔曼滤波器
+    kf = cv2.KalmanFilter(4, 2)
+    kf.transitionMatrix = np.array([[1, 0, 1, 0],
+                                    [0, 1, 0, 1],
+                                    [0, 0, 1, 0],
+                                    [0, 0, 0, 1]], np.float32)
+    kf.measurementMatrix = np.array([[1, 0, 0, 0],
+                                     [0, 1, 0, 0]], np.float32)
+    kf.processNoiseCov = np.array([[1, 0, 0, 0],
+                                   [0, 1, 0, 0],
+                                   [0, 0, 1, 0],
+                                   [0, 0, 0, 1]], np.float32) * 0.03
 
     while True:
         ret, frame = cap.read()
@@ -134,15 +212,22 @@ def process_video(filename):
             cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
             cv2.circle(frame, (cx, cy), 4, (0, 0, 255), -1)  # 画出中心红点
 
+            # 更新卡尔曼滤波器
+            kf.correct(np.array([[np.float32(cx)], [np.float32(cy)]]))
+            prediction = kf.predict()
+            predicted_cx, predicted_cy = int(prediction[0]), int(prediction[1])
+
             # 更新 track_history
-            track_history[track_id].append((cx, cy))
+            if track_id not in track_history:
+                track_history[track_id] = []
+            track_history[track_id].append((predicted_cx, predicted_cy))
 
             # 车辆进出计数
             if len(track_history[track_id]) > 1:
                 _, prev_y = track_history[track_id][-2]
-                if prev_y < line_y_red and cy >= line_y_red:
+                if prev_y < line_y_red and predicted_cy >= line_y_red:
                     vehicle_out += 1
-                elif prev_y > line_y_red and cy <= line_y_red:
+                elif prev_y > line_y_red and predicted_cy <= line_y_red:
                     vehicle_in += 1
 
         # 绘制基准线
@@ -157,7 +242,6 @@ def process_video(filename):
     cap.release()
     out.release()
     return result_path
-
 
 
 @app.get("/results/{filename}")
